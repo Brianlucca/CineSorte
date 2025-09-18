@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  .range-thumb::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #06b6d4; /* cyan-500 */
+    cursor: pointer;
+    border-radius: 50%;
+    margin-top: -6px;
+  }
+
+  .range-thumb::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #06b6d4; /* cyan-500 */
+    cursor: pointer;
+    border-radius: 50%;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.7s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-image-spin {
+    animation: fadeInOut 0.1s linear infinite;
+  }
+
+  @keyframes fadeInOut {
+    0%,
+    100% {
+      opacity: 0.7;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+}
