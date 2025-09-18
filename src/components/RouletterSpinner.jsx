@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 
 const RouletteSpinner = ({ movies }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -7,7 +7,7 @@ const RouletteSpinner = ({ movies }) => {
     if (movies.length === 0) return;
 
     const intervalId = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % movies.length);
+      setCurrentIndex(prevIndex => (prevIndex + 1) % movies.length);
     }, 100);
 
     return () => clearInterval(intervalId);

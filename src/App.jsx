@@ -4,22 +4,21 @@ import FilterSidebar from "./components/FilterSidebar";
 import MovieDetails from "./components/MovieDetails";
 import FilterRouletteView from "./views/FilterRouletteView";
 import CustomListView from "./views/CustomListView";
-import { Bars3Icon } from "@heroicons/react/24/solid";
 import Footer from "./components/Footer";
+import { Bars3Icon } from "@heroicons/react/24/solid";
 
 function App() {
   const [mode, setMode] = useState("filters");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [genres, setGenres] = useState([]);
+  const [mediaType, setMediaType] = useState("movie");
 
   const [movies, setMovies] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedMovie, setSelectedMovie] = useState(null);
-
   const [customList, setCustomList] = useState([]);
   const [customListError, setCustomListError] = useState("");
-
   const [activeView, setActiveView] = useState("main");
   const [detailsMovieId, setDetailsMovieId] = useState(null);
 
@@ -27,9 +26,10 @@ function App() {
 
   useEffect(() => {
     const fetchGenres = async () => {
+      if (!apiKey) return;
       try {
         const response = await axios.get(
-          `https://api.themoviedb.org/3/genre/movie/list?api_key=${apiKey}&language=pt-BR`
+          `https://api.themoviedb.org/3/genre/${mediaType}/list?api_key=${apiKey}&language=pt-BR`
         );
         setGenres(response.data.genres);
       } catch (error) {
@@ -37,7 +37,7 @@ function App() {
       }
     };
     fetchGenres();
-  }, [apiKey]);
+  }, [apiKey, mediaType]);
 
   const fetchMovies = async (filtersToUse) => {
     setIsSidebarOpen(false);
@@ -51,39 +51,47 @@ function App() {
       language: "pt-BR",
       sort_by: filtersToUse.sortBy,
       "vote_average.gte": filtersToUse.voteAverageGte,
-      "with_runtime.gte": filtersToUse.runtimeGte,
       "with_runtime.lte": filtersToUse.runtimeLte,
       include_adult: false,
-      with_watch_monetization_types: "flatrate",
       watch_region: "BR",
     };
 
     if (filtersToUse.genre) baseParams.with_genres = filtersToUse.genre;
-    if (filtersToUse.releaseYear)
-      baseParams.primary_release_year = filtersToUse.releaseYear;
+    if (filtersToUse.releaseYear) {
+      if (mediaType === "movie") {
+        baseParams.primary_release_year = filtersToUse.releaseYear;
+      } else {
+        baseParams.first_air_date_year = filtersToUse.releaseYear;
+      }
+    }
+    if (filtersToUse.excludeAnimation) baseParams.without_genres = "16";
+    if (filtersToUse.keywords.length > 0)
+      baseParams.with_keywords = filtersToUse.keywords
+        .map((k) => k.id)
+        .join(",");
 
     try {
+      const endpoint = `https://api.themoviedb.org/3/discover/${mediaType}`;
       const pagePromises = [1, 2, 3, 4, 5].map((page) =>
-        axios.get("https://api.themoviedb.org/3/discover/movie", {
-          params: { ...baseParams, page },
-        })
+        axios.get(endpoint, { params: { ...baseParams, page } })
       );
+
       const responses = await Promise.all(pagePromises);
       const allResults = responses.flatMap((res) => res.data.results);
       const uniqueResults = Array.from(
-        new Map(allResults.map((movie) => [movie.id, movie])).values()
+        new Map(allResults.map((item) => [item.id, item])).values()
       );
-      const moviesWithPosters = uniqueResults.filter(
-        (movie) => movie.poster_path && movie.overview
+      const resultsWithPosters = uniqueResults.filter(
+        (item) => item.poster_path && item.overview
       );
 
-      if (moviesWithPosters.length === 0) {
-        setError("Nenhum filme encontrado com esta combinação de filtros.");
+      if (resultsWithPosters.length === 0) {
+        setError("Nenhum resultado encontrado com esta combinação de filtros.");
       } else {
-        setMovies(moviesWithPosters);
+        setMovies(resultsWithPosters);
       }
     } catch (err) {
-      setError("Falha ao buscar filmes.");
+      setError("Falha ao buscar. Verifique os filtros e tente novamente.");
     } finally {
       setIsLoading(false);
     }
@@ -92,11 +100,11 @@ function App() {
   const addMovieToList = (movie) => {
     setCustomListError("");
     if (customList.length >= 10) {
-      setCustomListError("Você pode adicionar no máximo 10 filmes.");
+      setCustomListError("Você pode adicionar no máximo 10 itens.");
       return;
     }
     if (customList.some((item) => item.id === movie.id)) {
-      setCustomListError("Este filme já está na sua lista.");
+      setCustomListError("Este item já está na sua lista.");
       return;
     }
     setCustomList((prevList) => [...prevList, movie]);
@@ -108,8 +116,8 @@ function App() {
     );
   };
 
-  const handleShowDetails = (movieId) => {
-    setDetailsMovieId(movieId);
+  const handleShowDetails = (movieId, type) => {
+    setDetailsMovieId({ id: movieId, type: type });
     setActiveView("details");
   };
 
@@ -123,31 +131,29 @@ function App() {
       onApplyFilters={fetchMovies}
       genresList={genres}
       closeSidebar={() => setIsSidebarOpen(false)}
+      onMediaTypeChange={setMediaType}
+      mediaType={mediaType}
     />
   );
 
   if (activeView === "details") {
     return (
       <div className="bg-slate-900 min-h-screen p-4 sm:p-8 md:p-12 flex items-center justify-center">
-        <MovieDetails movieId={detailsMovieId} onBack={handleBackToMain} />
+        <MovieDetails movieDetails={detailsMovieId} onBack={handleBackToMain} />
       </div>
     );
   }
 
   return (
     <div className="bg-slate-900 min-h-screen text-slate-300 font-sans">
-      <div
-        className={
-          mode === "filters" ? "md:grid md:grid-cols-4 lg:grid-cols-5" : ""
-        }
-      >
+      <div className="relative md:flex">
         {mode === "filters" && (
           <>
-            <aside className="hidden md:block md:col-span-1 md:h-screen md:sticky md:top-0 p-6 bg-slate-950/70 backdrop-blur-sm border-r border-slate-800 overflow-y-auto">
+            <aside className="hidden md:block flex-shrink-0 md:w-80 lg:w-96 md:h-screen md:sticky md:top-0 p-6 bg-slate-950/70 backdrop-blur-sm border-r border-slate-800 overflow-y-auto">
               {sidebarContent}
             </aside>
             <div
-              className={`fixed top-0 left-0 z-40 w-full h-full bg-black/50 transition-opacity md:hidden ${
+              className={`fixed inset-0 z-40 bg-black/50 transition-opacity md:hidden ${
                 isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
               onClick={() => setIsSidebarOpen(false)}
@@ -162,17 +168,13 @@ function App() {
           </>
         )}
 
-        <main
-          className={`p-4 sm:p-8 md:p-12 ${
-            mode === "filters" ? "md:col-span-3 lg:col-span-4" : "col-span-full"
-          }`}
-        >
+        <main className="flex-grow p-4 sm:p-8 md:p-12">
           <header className="text-center mb-8">
-            <h1 className="text-5xl font-bold text-white tracking-tighter">
+            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tighter">
               Cine<span className="text-cyan-400">sorte</span>
             </h1>
-            <p className="text-slate-400 mt-2">
-              Sua busca pelo filme perfeito termina aqui.
+            <p className="text-slate-400 mt-2 text-sm md:text-base">
+              Sua busca pelo filme ou série perfeita termina aqui.
             </p>
           </header>
 
@@ -185,10 +187,10 @@ function App() {
             </button>
           )}
 
-          <div className="flex justify-center gap-4 mb-8">
+          <div className="flex justify-center gap-2 md:gap-4 mb-8">
             <button
               onClick={() => setMode("filters")}
-              className={`px-6 py-2 font-bold rounded-full transition-colors ${
+              className={`px-4 py-2 md:px-6 font-bold rounded-full transition-colors text-sm md:text-base ${
                 mode === "filters"
                   ? "bg-cyan-500 text-slate-900"
                   : "bg-slate-800 text-slate-300"
@@ -198,7 +200,7 @@ function App() {
             </button>
             <button
               onClick={() => setMode("customList")}
-              className={`px-6 py-2 font-bold rounded-full transition-colors ${
+              className={`px-4 py-2 md:px-6 font-bold rounded-full transition-colors text-sm md:text-base ${
                 mode === "customList"
                   ? "bg-cyan-500 text-slate-900"
                   : "bg-slate-800 text-slate-300"
@@ -208,29 +210,32 @@ function App() {
             </button>
           </div>
 
-          {mode === "filters" ? (
-            <div className="flex flex-col items-center justify-center min-h-[60vh]">
-              <FilterRouletteView
-                genres={genres}
-                movies={movies}
-                isLoading={isLoading}
-                error={error}
-                setError={setError}
-                selectedMovie={selectedMovie}
-                setSelectedMovie={setSelectedMovie}
+          <div className="pb-24">
+            {mode === "filters" ? (
+              <div className="flex flex-col items-center justify-center min-h-[60vh]">
+                <FilterRouletteView
+                  genres={genres}
+                  movies={movies}
+                  isLoading={isLoading}
+                  error={error}
+                  setError={setError}
+                  selectedMovie={selectedMovie}
+                  setSelectedMovie={setSelectedMovie}
+                  onShowDetails={handleShowDetails}
+                  mediaType={mediaType}
+                />
+              </div>
+            ) : (
+              <CustomListView
                 onShowDetails={handleShowDetails}
+                customList={customList}
+                onAddMovie={addMovieToList}
+                onRemoveMovie={removeMovieFromList}
+                error={customListError}
+                setError={setCustomListError}
               />
-            </div>
-          ) : (
-            <CustomListView
-              onShowDetails={handleShowDetails}
-              customList={customList}
-              onAddMovie={addMovieToList}
-              onRemoveMovie={removeMovieFromList}
-              error={customListError}
-              setError={setCustomListError}
-            />
-          )}
+            )}
+          </div>
           <Footer />
         </main>
       </div>
