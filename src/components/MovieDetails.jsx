@@ -90,7 +90,7 @@ const MovieDetails = ({ movieDetails, onBack }) => {
           <p className="text-slate-300 leading-relaxed text-sm md:text-base">{item.overview}</p>
 
           {director && <p className="text-sm md:text-base text-slate-300"><strong className="text-slate-400">Direção:</strong> {director.name}</p>}
-          {creators && <p className="text-sm md:text-base"><strong className="text-slate-400">Criação:</strong> {creators}</p>}
+          {creators && <p className="text-sm md:text-base text-slate-300"><strong className="text-slate-400">Criação:</strong> {creators}</p>}
           
           {providers.length > 0 && (
             <div>
