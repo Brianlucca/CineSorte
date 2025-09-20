@@ -12,18 +12,12 @@ const EntitySearchBar = ({ searchType, selectedItems, onAddItem, onRemoveItem, p
       setResults([]);
       return;
     }
-
-    setIsLoading(true);
     const debounceTimer = setTimeout(() => {
       const apiKey = import.meta.env.VITE_TMDB_API_KEY;
       axios.get(`https://api.themoviedb.org/3/search/${searchType}`, {
         params: { api_key: apiKey, language: 'pt-BR', query: query, page: 1 }
       }).then(response => {
         setResults(response.data.results);
-      }).catch(err => {
-        console.error("Erro na busca de entidade:", err);
-      }).finally(() => {
-        setIsLoading(false);
       });
     }, 500);
 
@@ -56,7 +50,7 @@ const EntitySearchBar = ({ searchType, selectedItems, onAddItem, onRemoveItem, p
           </ul>
         )}
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 min-h-[24px]">
         {selectedItems.map(item => (
           <div key={item.id} className="flex items-center gap-1 bg-cyan-800/50 text-cyan-200 text-xs px-2 py-1 rounded-full">
             <span>{item.name}</span>

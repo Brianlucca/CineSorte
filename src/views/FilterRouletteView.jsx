@@ -1,57 +1,81 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import MovieCard from '../components/MovieCard';
 import RouletteSpinner from '../components/RouletterSpinner';
+import { discoverMedia, getProviders } from '../services/api';
 
-const FilterRouletteView = ({ genres, movies, isLoading, error, setError, selectedMovie, setSelectedMovie, onShowDetails, mediaType }) => {
+const FilterRouletteView = ({ genres, onShowDetails, mediaType, filters }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [selectedItem, setSelectedItem] = useState(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [watchProviders, setWatchProviders] = useState(null);
-  const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-
-  const fetchWatchProviders = async (movieId) => {
-    try {
-      const response = await axios.get(`https://api.themoviedb.org/3/${mediaType}/${movieId}/watch/providers?api_key=${apiKey}`);
-      const providers = response.data.results.BR?.flatrate || [];
-      setWatchProviders(providers);
-    } catch (error) {
-      console.error("Erro ao buscar provedores:", error);
-      setWatchProviders([]);
-    }
-  };
+  const [recentlySpun, setRecentlySpun] = useState([]);
   
-  const handleSpinRoulette = () => {
-    if (movies.length === 0) {
-      setError('Busque por filmes ou séries antes de girar a roleta!');
-      return;
-    }
-    setIsSpinning(true);
-    setSelectedMovie(null);
-    setWatchProviders(null);
+  const handleSpinRoulette = async () => {
+    setIsLoading(true);
+    setError('');
+    setSelectedItem(null);
 
-    setTimeout(async () => {
-      const randomIndex = Math.floor(Math.random() * movies.length);
-      const chosenMovie = movies[randomIndex];
+    try {
+      const results = await discoverMedia(mediaType, filters);
       
-      await fetchWatchProviders(chosenMovie.id);
+      if (results.length === 0) {
+        setError('Nenhum resultado encontrado. Atualize a pagina e tente filtros mais abertos.');
+        setIsLoading(false);
+        return;
+      }
       
-      setSelectedMovie(chosenMovie);
-      setIsSpinning(false);
-    }, 3000);
+      let availableResults = results.filter(item => !recentlySpun.includes(item.id));
+      if (availableResults.length === 0) {
+        setRecentlySpun([]);
+        availableResults = results;
+      }
+
+      setIsLoading(false);
+      setIsSpinning(true);
+
+      setTimeout(async () => {
+        const randomIndex = Math.floor(Math.random() * availableResults.length);
+        const chosenItem = availableResults[randomIndex];
+        
+        const providers = await getProviders(mediaType, chosenItem.id);
+        setWatchProviders(providers);
+        
+        setSelectedItem(chosenItem);
+        setRecentlySpun(prev => [chosenItem.id, ...prev].slice(0, 10));
+        setIsSpinning(false);
+      }, 3000);
+      
+    } catch (err) {
+      setError('Falha ao buscar. Atualize a pagina e tente novamente.');
+      setIsLoading(false);
+    }
   };
 
   return (
-    <>
+    <div className="flex flex-col items-center justify-center min-h-[60vh]">
       {isLoading && (<div className="flex flex-col items-center text-center"><div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div><p className="mt-4 text-lg tracking-wider">Buscando na cinemateca...</p></div>)}
       {error && !isLoading && <p className="text-xl text-amber-500 bg-amber-950/50 px-6 py-3 rounded-lg">{error}</p>}
-      {isSpinning && <RouletteSpinner movies={movies} />}
-      {!isLoading && !error && !isSpinning && !selectedMovie && (
+      {isSpinning && <RouletteSpinner movies={[]} />} 
+      
+      {!isLoading && !error && !isSpinning && !selectedItem && (
         <div className="text-center">
-          <button onClick={handleSpinRoulette} disabled={movies.length === 0} className="bg-cyan-500 text-slate-900 font-bold text-xl md:text-2xl py-3 px-8 md:py-4 md:px-10 rounded-full transition-all duration-300 ease-in-out hover:bg-cyan-400 hover:shadow-lg hover:shadow-cyan-500/30 transform hover:scale-105 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none">Girar o Cinesorte</button>
-          {movies.length > 0 && <p className="mt-4 text-slate-400">{movies.length} resultados na mira. Boa sorte!</p>}
+          <p className="text-slate-400 mb-4">Ajuste os filtros na barra lateral e gire a roleta!</p>
+          <button onClick={handleSpinRoulette} className="bg-cyan-500 text-slate-900 font-bold text-xl md:text-2xl py-3 px-8 md:py-4 md:px-10 rounded-full transition-all duration-300 ease-in-out hover:bg-cyan-400 hover:shadow-lg hover:shadow-cyan-500/30 transform hover:scale-105">
+            Girar o Cinesorte
+          </button>
         </div>
       )}
-      {selectedMovie && <MovieCard item={selectedMovie} allGenres={genres} onShowDetails={(id) => onShowDetails(id, mediaType)} watchProviders={watchProviders} />}
-    </>
+      
+      {selectedItem && (
+        <div className="flex flex-col items-center gap-6 w-full">
+          <MovieCard item={selectedItem} allGenres={genres} onShowDetails={onShowDetails} watchProviders={watchProviders} />
+           <button onClick={handleSpinRoulette} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-full transition-colors duration-300">
+              Girar o Cinesorte
+            </button>
+        </div>
+      )}
+    </div>
   );
 };
 
