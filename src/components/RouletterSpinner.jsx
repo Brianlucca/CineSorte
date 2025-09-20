@@ -4,7 +4,7 @@ const RouletteSpinner = ({ movies }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    if (movies.length === 0) return;
+    if (!movies || movies.length === 0) return;
 
     const intervalId = setInterval(() => {
       setCurrentIndex(prevIndex => (prevIndex + 1) % movies.length);
@@ -14,7 +14,14 @@ const RouletteSpinner = ({ movies }) => {
   }, [movies]);
 
   const currentMovie = movies[currentIndex];
-  if (!currentMovie) return null;
+  if (!currentMovie) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center gap-6">
+        <div className="relative w-48 h-72 rounded-lg overflow-hidden shadow-2xl shadow-black/50 bg-slate-800 animate-pulse"></div>
+        <p className="text-2xl font-bold text-white tracking-widest">Carregando...</p>
+      </div>
+    );
+  }
 
   const posterUrl = `https://image.tmdb.org/t/p/w500${currentMovie.poster_path}`;
 
