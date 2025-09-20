@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { searchMulti } from '../services/api';
 
 const MovieSearchBar = ({ onAddMovie, customList }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchType, setSearchType] = useState('movie');
 
   useEffect(() => {
     if (query.length < 3) {
@@ -13,35 +12,19 @@ const MovieSearchBar = ({ onAddMovie, customList }) => {
       return;
     }
 
-    setIsLoading(true);
     const debounceTimer = setTimeout(() => {
-      const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-      axios.get(`https://api.themoviedb.org/3/search/multi`, {
-        params: {
-          api_key: apiKey,
-          language: 'pt-BR',
-          query: query,
-          page: 1,
-          include_adult: false,
-        }
-      }).then(response => {
-        const filteredResults = response.data.results.filter(
-          item => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path
-        );
-        setResults(filteredResults);
-      }).catch(err => {
-        console.error("Erro na busca:", err);
-      }).finally(() => {
-        setIsLoading(false);
-      });
+      setIsLoading(true);
+      searchMulti(query)
+        .then(data => setResults(data))
+        .catch(err => console.error("Erro na busca:", err))
+        .finally(() => setIsLoading(false));
     }, 500);
 
     return () => clearTimeout(debounceTimer);
   }, [query]);
 
   const handleAddClick = (item) => {
-    const mediaType = item.title ? 'movie' : 'tv';
-    onAddMovie({ ...item, media_type: mediaType });
+    onAddMovie(item);
     setQuery('');
     setResults([]);
   };
@@ -52,7 +35,7 @@ const MovieSearchBar = ({ onAddMovie, customList }) => {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Buscar filme ou série..."
+        placeholder="Adicionar filme ou série..."
         className="w-full p-3 bg-slate-800 rounded-md border border-slate-700 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none"
       />
       {results.length > 0 && (
