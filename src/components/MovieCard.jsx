@@ -10,7 +10,9 @@ const MovieCard = ({ item, allGenres, onShowDetails, watchProviders }) => {
   const mediaType = item.media_type || (item.title ? 'movie' : 'tv');
 
   const getGenreNames = (genreIds) => {
-    if (!genreIds || !allGenres || allGenres.length === 0) return [];
+    if (!genreIds || !Array.isArray(allGenres) || allGenres.length === 0) {
+      return [];
+    }
     return genreIds.map(id => allGenres.find(g => g.id === id)?.name).filter(Boolean);
   };
   
@@ -67,7 +69,7 @@ const MovieCard = ({ item, allGenres, onShowDetails, watchProviders }) => {
             </div>
           )}
           
-          <div className="mt-auto pt-4">
+          <div className="mt-auto pt-4 border-t border-slate-700/50">
              <button onClick={() => onShowDetails(item.id, mediaType)} className="inline-block bg-cyan-600 hover:bg-cyan-500 transition-colors text-white font-bold py-2 px-4 rounded-md">
               Ver Mais Detalhes
             </button>
