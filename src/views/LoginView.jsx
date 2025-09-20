@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/solid';
+import { EyeIcon, EyeSlashIcon, ShieldExclamationIcon } from '@heroicons/react/24/solid';
 
 const LoginView = ({ onSwitchToRegister }) => {
   const [email, setEmail] = useState('');
@@ -17,7 +17,11 @@ const LoginView = ({ onSwitchToRegister }) => {
     try {
       await login(email, password);
     } catch (err) {
-      setError('Email ou senha inválidos.');
+      if (err.message === 'COOKIE_BLOCKED') {
+        setError('COOKIES_BLOQUEADOS');
+      } else {
+        setError('Email ou senha inválidos.');
+      }
     } finally {
       setLoading(false);
     }
@@ -25,38 +29,55 @@ const LoginView = ({ onSwitchToRegister }) => {
 
   return (
     <div className="w-full max-w-md mx-auto text-center animate-fade-in">
-      <h2 className="text-3xl font-bold text-white mb-2">Login</h2>
-      <p className="text-slate-400 mb-8">Acesse sua conta para ver suas listas salvas.</p>
-      
-      <div className="bg-slate-800/50 border border-slate-700 p-8 rounded-lg text-left">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          <div>
-            <label htmlFor="email_login" className="block text-sm font-medium text-slate-300 mb-2">Email</label>
-            <input id="email_login" type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full p-3 bg-slate-700 rounded-md border border-slate-600 focus:ring-2 focus:ring-cyan-500 outline-none" />
-          </div>
-          <div>
-            <label htmlFor="password_login" className="block text-sm font-medium text-slate-300 mb-2">Senha</label>
-            <div className="relative">
-              <input id="password_login" type={showPassword ? 'text' : 'password'} placeholder="Sua senha" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full p-3 bg-slate-700 rounded-md border border-slate-600 focus:ring-2 focus:ring-cyan-500 outline-none pr-10" />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 px-3 flex items-center text-slate-400 hover:text-cyan-400">
-                {showPassword ? <EyeSlashIcon className="w-5 h-5"/> : <EyeIcon className="w-5 h-5"/>}
-              </button>
+      {error === 'COOKIES_BLOQUEADOS' ? (
+        <div className="bg-amber-800/50 border border-amber-600 p-6 rounded-lg text-left">
+            <div className="flex items-center gap-4">
+                <ShieldExclamationIcon className="w-12 h-12 text-amber-400 flex-shrink-0"/>
+                <div>
+                    <h3 className="text-xl font-bold text-white">Cookies Bloqueados</h3>
+                    <p className="text-amber-200 mt-2 text-sm">
+                        Seu navegador está bloqueando os cookies necessários para o login. 
+                        Por favor, vá nas configurações do seu navegador, permita "cookies de terceiros" e tente novamente.
+                    </p>
+                </div>
             </div>
+        </div>
+      ) : (
+        <>
+          <h2 className="text-3xl font-bold text-white mb-2">Login</h2>
+          <p className="text-slate-400 mb-8">Acesse sua conta para ver suas listas salvas.</p>
+          
+          <div className="bg-slate-800/50 border border-slate-700 p-8 rounded-lg text-left">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+              <div>
+                <label htmlFor="email_login" className="block text-sm font-medium text-slate-300 mb-2">Email</label>
+                <input id="email_login" type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full p-3 bg-slate-700 rounded-md border border-slate-600 focus:ring-2 focus:ring-cyan-500 outline-none" />
+              </div>
+              <div>
+                <label htmlFor="password_login" className="block text-sm font-medium text-slate-300 mb-2">Senha</label>
+                <div className="relative">
+                  <input id="password_login" type={showPassword ? 'text' : 'password'} placeholder="Sua senha" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full p-3 bg-slate-700 rounded-md border border-slate-600 focus:ring-2 focus:ring-cyan-500 outline-none pr-10" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 px-3 flex items-center text-slate-400 hover:text-cyan-400">
+                    {showPassword ? <EyeSlashIcon className="w-5 h-5"/> : <EyeIcon className="w-5 h-5"/>}
+                  </button>
+                </div>
+              </div>
+              
+              {error && <p className="text-amber-500 text-sm">{error}</p>}
+              
+              <button type="submit" disabled={loading} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-4 rounded-md transition-colors duration-300 disabled:bg-slate-700">
+                {loading ? 'Entrando...' : 'Entrar'}
+              </button>
+            </form>
+            <p className="text-sm text-center text-slate-400 mt-6">
+              Não tem uma conta?
+              <button onClick={onSwitchToRegister} className="font-bold text-cyan-400 hover:underline ml-2">
+                Cadastre-se
+              </button>
+            </p>
           </div>
-          
-          {error && <p className="text-amber-500 text-sm">{error}</p>}
-          
-          <button type="submit" disabled={loading} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-4 rounded-md transition-colors duration-300 disabled:bg-slate-700">
-            {loading ? 'Entrando...' : 'Entrar'}
-          </button>
-        </form>
-        <p className="text-sm text-center text-slate-400 mt-6">
-          Não tem uma conta?
-          <button onClick={onSwitchToRegister} className="font-bold text-cyan-400 hover:underline ml-2">
-            Cadastre-se
-          </button>
-        </p>
-      </div>
+        </>
+      )}
     </div>
   );
 };
