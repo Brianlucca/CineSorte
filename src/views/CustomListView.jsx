@@ -1,21 +1,144 @@
 import React, { useState, useEffect } from "react";
-import MovieSearchBar from "../components/MovieSearchBar";
 import MovieCard from "../components/MovieCard";
 import RouletteSpinner from "../components/RouletterSpinner";
-import {
-  XCircleIcon,
-  FilmIcon,
-  TrashIcon,
-  PlusCircleIcon,
-} from "@heroicons/react/24/solid";
-import {
-  getUserLists,
-  saveUserList,
-  deleteUserList,
-  removeMovieFromList,
-  getProviders,
-} from "../services/api";
-import { Tooltip } from "react-tooltip";
+import { XCircleIcon, FilmIcon, TrashIcon, PlusCircleIcon, ExclamationTriangleIcon, BookmarkIcon, MagnifyingGlassIcon, CheckCircleIcon } from "@heroicons/react/24/solid";
+import { getUserLists, saveUserList, deleteUserList, removeMovieFromList, getProviders, searchMulti } from "../services/api";
+
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in-fast">
+      <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md m-4">
+        <div className="p-6">
+          <div className="flex items-start gap-4">
+            <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-900/50 sm:mx-0">
+              <ExclamationTriangleIcon className="h-6 w-6 text-red-400" aria-hidden="true" />
+            </div>
+            <div className="mt-0 text-left">
+              <h3 className="text-base font-semibold leading-6 text-white">{title}</h3>
+              <div className="mt-2">
+                <p className="text-sm text-slate-400">{message}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-row-reverse gap-3 bg-slate-800/50 px-6 py-4 rounded-b-xl">
+          <button
+            type="button"
+            className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
+            onClick={onConfirm}
+          >
+            Deletar
+          </button>
+          <button
+            type="button"
+            className="inline-flex w-full justify-center rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-600 sm:w-auto"
+            onClick={onClose}
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MovieSearchBar = ({ onAddMovie, customList }) => {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (query.length < 3) {
+      setResults([]);
+      return;
+    }
+
+    const debounceTimer = setTimeout(() => {
+      setIsLoading(true);
+      searchMulti(query)
+        .then(data => setResults(data))
+        .catch(err => console.error("Erro na busca:", err))
+        .finally(() => setIsLoading(false));
+    }, 500);
+
+    return () => clearTimeout(debounceTimer);
+  }, [query]);
+
+  const handleAddClick = (item) => {
+    onAddMovie(item);
+    setQuery('');
+    setResults([]);
+  };
+  
+  const showResults = isFocused && query.length > 0;
+
+  return (
+    <div className="relative w-full" onBlur={() => setTimeout(() => setIsFocused(false), 100)}>
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+          <MagnifyingGlassIcon className="h-5 w-5 text-slate-400" />
+        </div>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          placeholder="Adicionar filme ou série..."
+          className="w-full p-3 pl-10 bg-slate-800 rounded-md border border-slate-700 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none"
+        />
+        {isLoading && (
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+            <div className="w-5 h-5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+      </div>
+
+      {showResults && (
+        <ul className="absolute z-10 w-full mt-2 bg-slate-800 border border-slate-700 rounded-md max-h-80 overflow-y-auto shadow-lg animate-fade-in-fast">
+          {isLoading ? (
+            <li className="p-4 text-center text-slate-400">Buscando...</li>
+          ) : query.length < 3 ? (
+             <li className="p-4 text-center text-slate-400">Digite pelo menos 3 caracteres.</li>
+          ) : results.length === 0 ? (
+            <li className="p-4 text-center text-slate-400">Nenhum resultado encontrado.</li>
+          ) : (
+            results.map(item => {
+              const isAdded = customList.some(listItem => listItem.id === item.id);
+              const title = item.title || item.name;
+              const releaseDate = item.release_date || item.first_air_date;
+              const year = releaseDate ? new Date(releaseDate).getFullYear() : 'N/A';
+              const typeLabel = item.media_type === 'movie' ? 'Filme' : 'Série';
+
+              return (
+                <li key={item.id} className="flex items-center p-2 border-b border-slate-700/50 last:border-b-0 hover:bg-slate-700/50 transition-colors">
+                  <img src={item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : `https://placehold.co/92x138/0f172a/94a3b8?text=${title.charAt(0)}`} alt={title} className="w-12 h-18 object-cover rounded-sm flex-shrink-0 bg-slate-900" />
+                  <div className="flex-grow ml-3 text-sm min-w-0">
+                    <p className="truncate font-semibold text-white">{title}</p>
+                    <p className="text-slate-400">{year} <span className="text-cyan-400 text-xs">({typeLabel})</span></p>
+                  </div>
+                  <button
+                    onClick={() => handleAddClick(item)}
+                    disabled={isAdded}
+                    className="ml-3 p-2 rounded-full transition-colors flex-shrink-0 disabled:cursor-not-allowed group"
+                  >
+                    {isAdded ? (
+                       <CheckCircleIcon className="w-6 h-6 text-green-500" />
+                    ) : (
+                       <PlusCircleIcon className="w-6 h-6 text-slate-400 group-hover:text-cyan-400" />
+                    )}
+                  </button>
+                </li>
+              );
+            })
+          )}
+        </ul>
+      )}
+    </div>
+  );
+};
 
 const CustomListView = ({ onShowDetails }) => {
   const [lists, setLists] = useState([]);
@@ -27,6 +150,8 @@ const CustomListView = ({ onShowDetails }) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [recentlySpun, setRecentlySpun] = useState([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [listToDelete, setListToDelete] = useState(null);
 
   useEffect(() => {
     fetchLists();
@@ -55,10 +180,10 @@ const CustomListView = ({ onShowDetails }) => {
     }
     setError("");
     try {
-      await saveUserList(newListName.trim(), []);
+      const newList = await saveUserList(newListName.trim(), []);
       setNewListName("");
       await fetchLists();
-      setActiveListId(newListName.trim());
+      setActiveListId(newList.id);
     } catch (err) {
       setError("Falha ao criar a lista.");
     }
@@ -90,21 +215,24 @@ const CustomListView = ({ onShowDetails }) => {
       setError("Falha ao remover o item.");
     }
   };
-
-  const handleDeleteList = async (listId) => {
-    if (
-      window.confirm(
-        `Tem certeza que quer deletar a lista "${listId}"? Esta ação não pode ser desfeita.`
-      )
-    ) {
-      setError("");
-      try {
-        await deleteUserList(listId);
-        setActiveListId(null);
-        await fetchLists();
-      } catch (err) {
-        setError("Falha ao deletar a lista.");
-      }
+  
+  const openDeleteModal = (list) => {
+    setListToDelete(list);
+    setShowDeleteModal(true);
+  };
+  
+  const confirmDeleteList = async () => {
+    if (!listToDelete) return;
+    setError("");
+    try {
+      await deleteUserList(listToDelete.id);
+      setActiveListId(null);
+      await fetchLists();
+    } catch (err) {
+      setError("Falha ao deletar a lista.");
+    } finally {
+      setShowDeleteModal(false);
+      setListToDelete(null);
     }
   };
 
@@ -131,220 +259,150 @@ const CustomListView = ({ onShowDetails }) => {
     setTimeout(async () => {
       const randomIndex = Math.floor(Math.random() * availableMovies.length);
       const chosenMovie = availableMovies[randomIndex];
-      const mediaType =
-        chosenMovie.media_type || (chosenMovie.title ? "movie" : "tv");
+      const mediaType = chosenMovie.media_type || (chosenMovie.title ? "movie" : "tv");
 
       const providers = await getProviders(mediaType, chosenMovie.id);
       setWatchProviders(providers);
 
       setSelectedItem(chosenMovie);
-      setRecentlySpun((prev) => [...prev, chosenMovie.id]);
+      setRecentlySpun((prev) => [...prev, chosenMovie.id].slice(0, 10));
       setIsSpinning(false);
     }, 3000);
   };
 
-  const renderTooltipContent = (movie) => {
-    const posterUrl = movie.poster_path
-      ? `https://image.tmdb.org/t/p/w200${movie.poster_path}`
-      : "";
-    const overview = movie.overview
-      ? movie.overview.substring(0, 120) + "..."
-      : "Sinopse não disponível.";
-    const vote = movie.vote_average ? movie.vote_average.toFixed(1) : "N/A";
-
-    return `
-      <div style="display: flex; gap: 12px; max-width: 320px; align-items: flex-start; text-align: left;">
-        ${
-          posterUrl
-            ? `<img src="${posterUrl}" style="width: 80px; border-radius: 6px; flex-shrink: 0;" />`
-            : ""
-        }
-        <div style="display: flex; flex-direction: column;">
-          <h4 style="font-weight: bold; font-size: 14px; margin: 0 0 8px 0;">
-            Nota: <span style="color: #facc15;">★</span> ${vote}
-          </h4>
-          <p style="font-size: 12px; color: #cbd5e1; margin: 0; line-height: 1.5;">
-            ${overview}
-          </p>
-        </div>
-      </div>
-    `;
-  };
-
   if (loading) {
     return (
-      <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
     );
   }
-
+  
   return (
-    <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 lg:gap-12 animate-fade-in">
-      <div className="lg:w-2/5 lg:max-w-md flex-shrink-0 space-y-6">
-        <section className="bg-slate-800/50 p-6 rounded-xl border border-slate-700/50">
-          <h2 className="text-xl font-bold text-white mb-4">
-            Gerencie Suas Listas
-          </h2>
+    <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 animate-fade-in">
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDeleteList}
+        title="Deletar Lista"
+        message={`Tem certeza que quer deletar a lista "${listToDelete?.id}"? Esta ação não pode ser desfeita.`}
+      />
+      
+      {/* --- List Navigation Panel --- */}
+      <aside className="lg:w-1/3 lg:max-w-sm flex-shrink-0 space-y-6">
+        <div className="bg-slate-800/50 p-4 sm:p-5 rounded-xl border border-slate-700/50">
+          <h2 className="text-xl font-bold text-white mb-4">Gerenciar Listas</h2>
           <form onSubmit={handleCreateList} className="flex gap-2">
             <input
               type="text"
               value={newListName}
               onChange={(e) => setNewListName(e.target.value)}
               placeholder="Nome da nova lista..."
+              maxLength="50"
               className="flex-grow p-3 bg-slate-800 rounded-md border border-slate-700 focus:ring-2 focus:ring-cyan-500 outline-none"
             />
-            <button
-              type="submit"
-              className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold p-3 rounded-md transition-colors"
-            >
+            <button type="submit" className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold p-3 rounded-md transition-colors flex-shrink-0">
               <PlusCircleIcon className="w-6 h-6" />
             </button>
           </form>
-          {lists.length > 0 && (
-            <div className="mt-4">
-              <label
-                htmlFor="active-list-select"
-                className="text-sm font-medium text-slate-400 mb-2 block"
-              >
-                Selecione uma lista para sortear:
-              </label>
-              <select
-                id="active-list-select"
-                value={activeListId || ""}
-                onChange={(e) => setActiveListId(e.target.value)}
-                className="w-full p-3 bg-slate-800 rounded-md border border-slate-700 focus:ring-2 focus:ring-cyan-500 outline-none"
-              >
-                <option value="" disabled>
-                  Escolha uma lista
-                </option>
-                {lists.map((list) => (
-                  <option key={list.id} value={list.id}>
-                    {list.id}
-                  </option>
-                ))}
-              </select>
+        </div>
+        
+        <nav className="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
+          <ul className="space-y-1">
+            {lists.map((list) => (
+              <li key={list.id}>
+                <button 
+                  onClick={() => setActiveListId(list.id)} 
+                  className={`w-full flex justify-between items-center text-left p-3 rounded-lg transition-colors ${ activeListId === list.id ? 'bg-cyan-500/10 text-cyan-300' : 'text-slate-300 hover:bg-slate-700/50' }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <BookmarkIcon className={`w-5 h-5 ${ activeListId === list.id ? 'text-cyan-400' : 'text-slate-500' }`} />
+                    <span className="font-semibold">{list.id}</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs font-mono bg-slate-700/80 text-slate-400 rounded-full px-2 py-0.5">{list.movies.length}</span>
+                    <TrashIcon onClick={(e) => { e.stopPropagation(); openDeleteModal(list); }} className="w-5 h-5 text-slate-500 hover:text-red-500 transition-colors" />
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </aside>
+
+      {/* --- Main Content Area --- */}
+      <main className="flex-grow min-w-0">
+        <section className="bg-slate-800/50 p-4 sm:p-6 rounded-xl border border-slate-700/50">
+          {!activeList ? (
+            <div className="flex flex-col items-center justify-center text-center text-slate-500 h-full py-10 min-h-[50vh]">
+              <p>Crie ou selecione uma lista para começar.</p>
             </div>
+          ) : (
+            <>
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+                <h2 className="text-xl font-bold text-white truncate pr-2">
+                  Conteúdo da Lista: <span className="text-cyan-400">{activeList.id}</span>
+                </h2>
+                <div className="w-full sm:w-auto sm:max-w-xs">
+                  <MovieSearchBar onAddMovie={handleAddMovie} customList={activeList.movies} />
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2 max-h-80 overflow-y-auto pr-2 rounded-lg bg-slate-900/40 p-2 border border-slate-700/50">
+                {activeList.movies.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center text-center text-slate-500 h-full py-10">
+                    <FilmIcon className="w-16 h-16 mb-4" />
+                    <p>A lista está vazia. Use a busca para adicionar itens.</p>
+                  </div>
+                ) : (
+                  activeList.movies.map((movie) => (
+                    <div key={movie.id} className="flex items-center justify-between p-2 list-none bg-slate-700/50 rounded-md animate-fade-in-fast">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img src={movie.poster_path ? `https://image.tmdb.org/t/p/w92${movie.poster_path}` : 'https://placehold.co/92x138/0f172a/94a3b8?text=S/P'} alt={movie.title || movie.name} className="w-10 h-14 object-cover rounded-sm flex-shrink-0 bg-slate-900"/>
+                        <p className="text-sm font-semibold truncate flex-grow min-w-0">{movie.title || movie.name}</p>
+                      </div>
+                      <button onClick={() => handleRemoveMovie(movie.id)} className="text-slate-500 hover:text-red-500 ml-2 flex-shrink-0">
+                        <XCircleIcon className="w-6 h-6" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
           )}
         </section>
 
-        <section
-          className={`bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 transition-opacity ${
-            !activeList ? "opacity-50 pointer-events-none" : ""
-          }`}
-        >
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-white truncate pr-2">
-              Lista atual:{" "}
-              <span className="text-cyan-400">
-                {activeList ? activeList.id : "..."}
-              </span>
-            </h2>
-            {activeList && (
+        <section className="flex-grow flex items-center justify-center rounded-xl min-h-[40vh] mt-8 bg-slate-800/20 border border-dashed border-slate-700 p-8">
+          {isSpinning ? <RouletteSpinner movies={activeList?.movies || []} /> : 
+          !selectedItem ? (
+            <div className="text-center">
               <button
-                onClick={() => handleDeleteList(activeList.id)}
-                className="text-slate-500 hover:text-red-500 flex items-center gap-1 text-xs flex-shrink-0"
+                onClick={handleSpinCustomList}
+                disabled={!activeList || activeList.movies.length < 2}
+                className="bg-cyan-500 text-slate-900 font-bold text-xl py-4 px-10 rounded-full transition-all duration-300 ease-in-out hover:bg-cyan-400 hover:shadow-lg hover:shadow-cyan-500/30 transform hover:scale-105 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
               >
-                <TrashIcon className="w-4 h-4" /> Deletar
+                Girar o Cinesorte
               </button>
-            )}
-          </div>
-          <MovieSearchBar
-            onAddMovie={handleAddMovie}
-            customList={activeList?.movies || []}
-          />
-          <div className="mt-4 space-y-2 max-h-80 overflow-y-auto pr-2">
-            {!activeList ? (
-              <div className="flex flex-col items-center justify-center text-center text-slate-500 h-full py-10">
-                <p>Selecione uma lista acima para começar.</p>
-              </div>
-            ) : activeList.movies.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center text-slate-500 h-full py-10">
-                <FilmIcon className="w-16 h-16 mb-4" />
-                <p>
-                  A lista "{activeList.id}" está vazia. Use a busca para
-                  adicionar itens.
+              {error && <p className="mt-4 text-amber-400">{error}</p>}
+              {activeList && activeList.movies.length < 2 && (
+                <p className="mt-4 text-slate-400">
+                  Adicione pelo menos {2 - activeList.movies.length} item para sortear!
                 </p>
-              </div>
-            ) : (
-              activeList.movies.map((movie) => (
-                <li
-                  key={movie.id}
-                  data-tooltip-id="movie-tooltip"
-                  data-tooltip-html={renderTooltipContent(movie)}
-                  className="flex items-center justify-between p-2 list-none bg-slate-700/50 rounded-md animate-fade-in"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-14 bg-slate-900 rounded-sm flex-shrink-0 flex items-center justify-center">
-                      <img
-                        src={`https://image.tmdb.org/t/p/w92${movie.poster_path}`}
-                        alt={movie.title || movie.name}
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <p className="text-sm truncate flex-grow min-w-0">
-                      {movie.title || movie.name}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleRemoveMovie(movie.id)}
-                    className="text-slate-500 hover:text-red-500 ml-2 flex-shrink-0"
-                  >
-                    <XCircleIcon className="w-6 h-6" />
-                  </button>
-                </li>
-              ))
-            )}
-          </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-6 w-full">
+              <MovieCard item={selectedItem} allGenres={[]} watchProviders={watchProviders} onShowDetails={onShowDetails}/>
+              <button onClick={handleSpinCustomList} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-full transition-colors duration-300">
+                Girar Novamente
+              </button>
+            </div>
+          )}
         </section>
-      </div>
-
-      <section className="flex-grow flex items-center justify-center rounded-xl min-h-[60vh] lg:min-h-0 bg-slate-800/20 border border-dashed border-slate-700 p-8">
-        {isSpinning && <RouletteSpinner movies={activeList?.movies || []} />}
-        {!isSpinning && !selectedItem && (
-          <div className="text-center">
-            <button
-              onClick={handleSpinCustomList}
-              disabled={!activeList || activeList.movies.length < 2}
-              className="bg-cyan-500 text-slate-900 font-bold text-2xl py-4 px-10 rounded-full transition-all duration-300 ease-in-out hover:bg-cyan-400 hover:shadow-lg hover:shadow-cyan-500/30 transform hover:scale-105 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
-            >
-              Girar o Cinesorte
-            </button>
-            {error && <p className="mt-4 text-amber-400">{error}</p>}
-            {activeList && activeList.movies.length < 2 && (
-              <p className="mt-4 text-slate-400">
-                Adicione pelo menos mais {2 - activeList.movies.length} item
-                para poder sortear!
-              </p>
-            )}
-          </div>
-        )}
-        {selectedItem && (
-          <div className="flex flex-col items-center gap-6 w-full">
-            <MovieCard
-              item={selectedItem}
-              allGenres={[]}
-              watchProviders={watchProviders}
-              onShowDetails={onShowDetails}
-            />
-            <button
-              onClick={handleSpinCustomList}
-              className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-full transition-colors duration-300"
-            >
-              Girar o Cinesorte
-            </button>
-          </div>
-        )}
-      </section>
-      <Tooltip
-        id="movie-tooltip"
-        style={{
-          backgroundColor: "#1e293b",
-          color: "#e2e8f0",
-          borderRadius: "8px",
-        }}
-        border="1px solid #334155"
-      />
+      </main>
     </div>
   );
 };
 
 export default CustomListView;
+

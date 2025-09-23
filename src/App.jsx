@@ -5,6 +5,7 @@ import FilterRouletteView from './views/FilterRouletteView';
 import CustomListView from './views/CustomListView';
 import AuthView from './views/AuthView';
 import Footer from './components/Footer';
+import LoadingScreen from './components/LoadingScreen';
 import { Bars3Icon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
 import { useAuth } from './context/AuthContext';
 import { getGenres } from './services/api';
@@ -26,18 +27,34 @@ function App() {
   
   const [activeView, setActiveView] = useState('main');
   const [detailsItem, setDetailsItem] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   const { currentUser, logout } = useAuth();
 
   useEffect(() => {
-    const fetchAllGenres = async () => {
+    const maxRetries = 5;
+    let attempt = 1;
+
+    const fetchInitialData = async () => {
       try {
         const movieGenres = await getGenres('movie');
         const tvGenres = await getGenres('tv');
         setGenres({ movie: movieGenres, tv: tvGenres });
-      } catch (error) { console.error("Erro ao buscar gêneros:", error); }
+        setIsLoading(false);
+        setError(null);
+      } catch (error) {
+        if (attempt < maxRetries) {
+          attempt++;
+          setTimeout(fetchInitialData, 3000);
+        } else {
+          setError("Não foi possível conectar ao servidor. Tente atualizar a página em alguns instantes.");
+          setIsLoading(false);
+        }
+      }
     };
-    fetchAllGenres();
+
+    fetchInitialData();
   }, []);
 
   const handleShowDetails = (itemId, type) => {
@@ -51,6 +68,21 @@ function App() {
   };
 
   const sidebarContent = <FilterSidebar onFilterChange={setFilters} initialFilters={filters} genres={genres[mediaType]} closeSidebar={() => setIsSidebarOpen(false)} onMediaTypeChange={setMediaType} mediaType={mediaType} />;
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+  
+  if (error) {
+    return (
+      <div className="bg-slate-900 min-h-screen flex items-center justify-center text-center text-amber-500 p-4">
+        <div className="bg-amber-950/50 px-8 py-6 rounded-lg">
+          <h2 className="text-2xl font-bold mb-2">Ops! Algo deu errado.</h2>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (activeView === 'details') {
     return (
