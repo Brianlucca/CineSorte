@@ -99,7 +99,7 @@ const MovieCard = ({ item, allGenres, onShowDetails, watchProviders }) => {
                   <span className="text-lg font-semibold text-cyan-400">
                     {releaseYear}
                   </span>
-                  <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow-lg mt-1">
+                  <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow-lg mt-1 text-center md:text-left">
                     {title}
                   </h2>
                 </div>
