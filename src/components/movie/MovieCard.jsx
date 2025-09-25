@@ -84,7 +84,7 @@ const MovieCard = ({ item, allGenres, onShowDetails, watchProviders }) => {
             />
             {currentUser && (
               <button
-                onClick={() => openModal(summaryItem)}
+                onClick={() => openModal(item)}
                 className="absolute top-3 right-3 p-2 rounded-full bg-slate-800/80 text-slate-300 hover:text-cyan-400 hover:bg-slate-700 transition-colors flex-shrink-0 backdrop-blur-sm"
               >
                 <BookmarkIcon className="w-6 h-6" />
