@@ -81,13 +81,6 @@ const MyList = ({ onShowDetails }) => {
     handleSpinCustomList,
   } = useMyList();
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-8 animate-fade-in">
