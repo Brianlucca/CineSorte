@@ -51,7 +51,7 @@ export const useMovieDetails = (id, type) => {
     title: item.title || item.name,
     tagline: item.tagline,
     overview: item.overview,
-    genres: item.genres,
+    genres: item.genres || [],
     releaseDate: item.release_date || item.first_air_date,
     releaseYear: item.release_date || item.first_air_date ? new Date(item.release_date || item.first_air_date).getFullYear() : 'N/A',
     director: item.credits?.crew.find(person => person.job === 'Director'),
@@ -68,6 +68,7 @@ export const useMovieDetails = (id, type) => {
     revenue: formatCurrency(item.revenue),
     providers: item['watch/providers']?.results?.BR?.flatrate || [],
     productionCompanies: item.production_companies,
+    trailer: item.trailer,
   } : null;
 
   return { loading, error, details, rawItem: item };

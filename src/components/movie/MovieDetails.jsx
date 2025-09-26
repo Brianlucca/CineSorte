@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useMovieDetails } from '../../hooks/movie/useMovieDetails';
-import { ArrowLeftIcon, BookmarkIcon } from '@heroicons/react/24/solid';
+import { ArrowLeftIcon, BookmarkIcon, PlayCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '../../context/AuthContext';
 import { AddToListModal } from './AddToListModal';
 import { useAddToList } from '../../hooks/addToList/useAddToList';
@@ -38,6 +38,7 @@ const MovieDetails = ({ movieDetails, onBack }) => {
   const { currentUser } = useAuth();
   const { isModalOpen, openModal, closeModal, userLists, isLoading: isLoadingLists, addMovieToSelectedList, movieToAdd } = useAddToList();
   const [backdropLoaded, setBackdropLoaded] = useState(false);
+  const [showTrailer, setShowTrailer] = useState(false);
 
   useEffect(() => {
     if (details?.backdropUrl) {
@@ -88,6 +89,27 @@ const MovieDetails = ({ movieDetails, onBack }) => {
     vote_count: rawItem.vote_count,
   };
 
+  const trailerSection = showTrailer && details.trailer && (
+    <section className="animate-fade-in">
+      <div className="flex justify-between items-center mb-4">
+        <SectionHeader title="Trailer" />
+        <button onClick={() => setShowTrailer(false)} className="text-slate-400 hover:text-white">
+          <XCircleIcon className="w-8 h-8"/>
+        </button>
+      </div>
+      <div className="aspect-video">
+        <iframe
+          className="w-full h-full rounded-lg shadow-2xl border border-slate-700 bg-black"
+          src={`https://www.youtube.com/embed/${details.trailer.key}?autoplay=1&rel=0&modestbranding=1`}
+          title="YouTube video player"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        ></iframe>
+      </div>
+    </section>
+  );
+
   return (
     <>
       <AddToListModal
@@ -132,11 +154,27 @@ const MovieDetails = ({ movieDetails, onBack }) => {
           <aside className="lg:col-span-4 xl:col-span-3 space-y-8">
             <div className="relative">
               <img src={details.posterUrl} alt={`Pôster de ${details.title}`} className="w-full rounded-lg shadow-2xl shadow-black/70" />
-              {currentUser && (
-                <button onClick={() => openModal(summaryItem)} className="absolute top-3 right-3 p-2 rounded-full bg-slate-800/80 text-slate-300 hover:text-cyan-400 hover:bg-slate-700 transition-colors flex-shrink-0 backdrop-blur-sm">
-                  <BookmarkIcon className="w-6 h-6" />
+              
+              {details.trailer && (
+                <button
+                  onClick={() => setShowTrailer(true)}
+                  className="absolute top-3 left-3 flex items-center gap-2 text-white bg-black/50 hover:bg-cyan-500 transition-colors px-3 py-1.5 rounded-full text-sm font-semibold backdrop-blur-sm"
+                  aria-label="Ver Trailer"
+                >
+                  <PlayCircleIcon className="w-5 h-5" />
+                  <span>Ver Trailer</span>
                 </button>
               )}
+
+              {currentUser && (
+                  <button onClick={() => openModal(summaryItem)} className="absolute top-3 right-3 p-2 rounded-full bg-slate-800/80 text-slate-300 hover:text-cyan-400 hover:bg-slate-700 transition-colors flex-shrink-0 backdrop-blur-sm">
+                      <BookmarkIcon className="w-6 h-6" />
+                  </button>
+              )}
+            </div>
+
+            <div className="lg:hidden">
+              {trailerSection}
             </div>
             
             {details.providers.length > 0 && (
@@ -173,6 +211,10 @@ const MovieDetails = ({ movieDetails, onBack }) => {
           </aside>
 
           <main className="lg:col-span-8 xl:col-span-9 space-y-12">
+            <div className="hidden lg:block">
+              {trailerSection}
+            </div>
+            
             <section>
               <SectionHeader title="Sinopse" />
               <p className="text-slate-300 leading-relaxed text-base prose prose-invert max-w-none">
