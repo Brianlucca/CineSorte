@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { loginUser, registerUser, getMe } from '../services/api';
+import { loginUser, registerUser, getMe, logoutUser } from '../services/api';
+import LoadingScreen from '../components/layouts/LoadingScreen';
 
 const AuthContext = createContext();
 
@@ -12,13 +13,29 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getMe().then(user => {
-      setCurrentUser(user);
-    }).catch(() => {
-      setCurrentUser(null);
-    }).finally(() => {
-      setLoading(false);
-    });
+    const maxRetries = 5;
+    let attempt = 1;
+
+    const verifyUser = async () => {
+      try {
+        const user = await getMe();
+        setCurrentUser(user);
+        setLoading(false);
+      } catch (err) {
+        if (err.response && err.response.status === 403) {
+          setCurrentUser(null);
+          setLoading(false);
+        } else if (attempt < maxRetries) {
+          attempt++;
+          setTimeout(verifyUser, 3000);
+        } else {
+          setCurrentUser(null);
+          setLoading(false);
+        }
+      }
+    };
+
+    verifyUser();
   }, []);
 
   const login = async (email, password) => {
@@ -36,8 +53,8 @@ export const AuthProvider = ({ children }) => {
     await login(email, password);
   };
 
-  const logout = () => {
-    localStorage.removeItem('authToken');
+  const logout = async () => {
+    await logoutUser();
     setCurrentUser(null);
   };
 
@@ -48,9 +65,14 @@ export const AuthProvider = ({ children }) => {
     logout,
   };
 
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };
+
