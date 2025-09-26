@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useMovieDetails } from '../../hooks/movie/useMovieDetails';
 import { ArrowLeftIcon, BookmarkIcon, PlayCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '../../context/AuthContext';
@@ -45,10 +45,59 @@ const MovieDetails = ({ movieDetails, onBack }) => {
       const img = new Image();
       img.src = details.backdropUrl;
       img.onload = () => {
-        setTimeout(() => setBackdropLoaded(true), 100); 
+        setTimeout(() => setBackdropLoaded(true), 100);
       };
     }
   }, [details?.backdropUrl]);
+
+  const summaryItem = rawItem ? {
+    adult: rawItem.adult,
+    backdrop_path: rawItem.backdrop_path,
+    genre_ids: rawItem.genres?.map(g => g.id),
+    id: rawItem.id,
+    media_type: type,
+    original_language: rawItem.original_language,
+    original_title: rawItem.original_title,
+    overview: rawItem.overview,
+    popularity: rawItem.popularity,
+    poster_path: rawItem.poster_path,
+    release_date: rawItem.release_date || rawItem.first_air_date,
+    title: rawItem.title || rawItem.name,
+    video: rawItem.video,
+    vote_average: rawItem.vote_average,
+    vote_count: rawItem.vote_count,
+  } : null;
+
+  const trailerSection = useMemo(() => {
+    if (!showTrailer || !details?.trailer?.key) {
+      return null;
+    }
+    const trailerSrc = `https://www.youtube.com/embed/${details.trailer.key}?autoplay=1&rel=0&modestbranding=1`;
+
+    return (
+      <div className="animate-fade-in">
+        <section>
+          <div className="flex justify-between items-center mb-4">
+            <SectionHeader title="Trailer" />
+            <button onClick={() => setShowTrailer(false)} className="text-slate-400 hover:text-white">
+              <XCircleIcon className="w-8 h-8"/>
+            </button>
+          </div>
+          <div className="aspect-video">
+            <iframe
+              key={details.trailer.key}
+              className="w-full h-full rounded-lg shadow-2xl border border-slate-700 bg-black"
+              src={trailerSrc}
+              title="YouTube video player"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          </div>
+        </section>
+      </div>
+    );
+  }, [showTrailer, details?.trailer]);
 
   if (loading) {
     return (
@@ -70,45 +119,6 @@ const MovieDetails = ({ movieDetails, onBack }) => {
   }
 
   if (!details) return null;
-
-  const summaryItem = {
-    adult: rawItem.adult,
-    backdrop_path: rawItem.backdrop_path,
-    genre_ids: rawItem.genres?.map(g => g.id),
-    id: rawItem.id,
-    media_type: type,
-    original_language: rawItem.original_language,
-    original_title: rawItem.original_title,
-    overview: rawItem.overview,
-    popularity: rawItem.popularity,
-    poster_path: rawItem.poster_path,
-    release_date: rawItem.release_date || rawItem.first_air_date,
-    title: rawItem.title || rawItem.name,
-    video: rawItem.video,
-    vote_average: rawItem.vote_average,
-    vote_count: rawItem.vote_count,
-  };
-
-  const trailerSection = showTrailer && details.trailer && (
-    <section className="animate-fade-in">
-      <div className="flex justify-between items-center mb-4">
-        <SectionHeader title="Trailer" />
-        <button onClick={() => setShowTrailer(false)} className="text-slate-400 hover:text-white">
-          <XCircleIcon className="w-8 h-8"/>
-        </button>
-      </div>
-      <div className="aspect-video">
-        <iframe
-          className="w-full h-full rounded-lg shadow-2xl border border-slate-700 bg-black"
-          src={`https://www.youtube.com/embed/${details.trailer.key}?autoplay=1&rel=0&modestbranding=1`}
-          title="YouTube video player"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        ></iframe>
-      </div>
-    </section>
-  );
 
   return (
     <>
@@ -166,15 +176,11 @@ const MovieDetails = ({ movieDetails, onBack }) => {
                 </button>
               )}
 
-              {currentUser && (
+              {currentUser && summaryItem && (
                   <button onClick={() => openModal(summaryItem)} className="absolute top-3 right-3 p-2 rounded-full bg-slate-800/80 text-slate-300 hover:text-cyan-400 hover:bg-slate-700 transition-colors flex-shrink-0 backdrop-blur-sm">
                       <BookmarkIcon className="w-6 h-6" />
                   </button>
               )}
-            </div>
-
-            <div className="lg:hidden">
-              {trailerSection}
             </div>
             
             {details.providers.length > 0 && (
@@ -211,10 +217,7 @@ const MovieDetails = ({ movieDetails, onBack }) => {
           </aside>
 
           <main className="lg:col-span-8 xl:col-span-9 space-y-12">
-            <div className="hidden lg:block">
-              {trailerSection}
-            </div>
-            
+            {trailerSection}
             <section>
               <SectionHeader title="Sinopse" />
               <p className="text-slate-300 leading-relaxed text-base prose prose-invert max-w-none">
