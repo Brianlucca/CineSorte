@@ -94,17 +94,12 @@ const MovieCard = ({ item, allGenres, onShowDetails, watchProviders }) => {
 
           <div className="flex flex-col text-center md:text-left flex-grow">
             <div>
-              <div className="flex justify-between items-start">
+              <div className="relative">
                 <div>
-                  <span className="text-lg font-semibold text-cyan-400">
-                    {releaseYear}
-                  </span>
-                  <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow-lg mt-1 text-center md:text-left">
-                    {title}
-                  </h2>
+                  <span className="text-lg font-semibold text-cyan-400">{releaseYear}</span>
+                  <h2 className="text-3xl md:text-4xl font-bold text-white text-shadow-lg mt-1">{title}</h2>
                 </div>
               </div>
-
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-4 mb-4">
                 <InfoBadge
                   icon={<StarIcon className="w-5 h-5 text-yellow-400" />}
