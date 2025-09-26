@@ -8,7 +8,7 @@ const LoadingScreen = () => {
       </h1>
       <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin my-8"></div>
       <p className="text-lg tracking-wider text-slate-400">
-        Acordando os servidores... Isso pode levar um instante.
+        Isso pode levar um instante.....
       </p>
     </div>
   );
